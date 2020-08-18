@@ -1,0 +1,5 @@
+в inf_main.txt нужно добавить свой токен в формате:
+token:83472956932875
+
+ѕосле нужно прописать в main.py путь к этому файлу:
+with open('C:\Python\Selenium\\autoreg\\inf_main.txt', 'r') as UrInf:
