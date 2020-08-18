@@ -8,7 +8,29 @@ from selenium.common.exceptions import TimeoutException
 import time
 import requests
 import re
+import json
 
-print(r.getrandbits(50))
-population = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я', 'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-print(r.sample(population, 4))
+dict = {}
+with open('C:\Python\Selenium\\autoreg\\inf.txt', 'r') as UrInf:
+    for line in UrInf:
+        listInf = line.strip().split(':')
+        dict[listInf[0]] = listInf[1]
+token = dict.get('token')
+
+payload = {'api_key': f'{token}', 'action': 'getPrices', 'service': 'vk', 'operator': 'any'}
+g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
+responseDic = json.loads(g.text.replace("'", '"'))  # переводим в строку json, чтоб сделать словарем
+print(responseDic)
+keys = list(responseDic.keys())  # получаем список с номерами стран
+lowestPriceList = [keys[0], responseDic[keys[0]]['vk']['cost']]  # создаем список, в котором будет номер страны с самой дешевой ценой аренды и добавляем первую страну
+
+for elem in responseDic:
+    if responseDic[elem] == {} or responseDic[elem]['vk']['count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
+        continue
+    else:
+        if responseDic[elem]['vk']['cost'] >= lowestPriceList[1]: # если полученная цена больше цены из списка, берем другой номер
+            continue
+        else:  # если цена меньше
+            lowestPriceList.clear() # очищаем список
+            lowestPriceList += [elem, responseDic[elem]['vk']['cost'], responseDic[elem]['vk']['count']] # добавляем номер страны, цену и кол-во номеров
+print('самая меньшая цена:', lowestPriceList)

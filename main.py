@@ -48,16 +48,16 @@ def reg():
     name_list = []
     surname_list = []
 
-    # импортируем имена и фамилии их txt-списков python списки
+    # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
 
     with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
         for eachLine in inf:
-            a = eachLine.strip().split("\n")
+            a = eachLine.capitalize().strip().split("\n")
             name_list.append(a)
 
     with open('C:\Python\Selenium\\autoreg\\names\\surname.txt', 'r') as inf:
         for eachLine in inf:
-            a = eachLine.strip().split("\n")
+            a = eachLine.capitalize().strip().split("\n")
             surname_list.append(a)
 
     # рандомно выбираем имя и фамилию и вставляем в инпуты
