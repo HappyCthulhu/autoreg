@@ -10,6 +10,7 @@ import requests
 import re
 import json
 
+<<<<<<< HEAD
 dict = {}
 with open('C:\Python\Selenium\\autoreg\\inf.txt', 'r') as UrInf:
     for line in UrInf:
@@ -34,3 +35,8 @@ for elem in responseDic:
             lowestPriceList.clear() # очищаем список
             lowestPriceList += [elem, responseDic[elem]['vk']['cost'], responseDic[elem]['vk']['count']] # добавляем номер страны, цену и кол-во номеров
 print('самая меньшая цена:', lowestPriceList)
+=======
+print(r.getrandbits(50))
+population = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я', 'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+print(r.sample(population, 6))
+>>>>>>> d0eb985c9445a8d8133687d8b05c53a777aa0987

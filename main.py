@@ -8,6 +8,7 @@ from selenium.common.exceptions import TimeoutException
 import time
 import requests
 import re
+import os
 from selenium.common.exceptions import NoSuchElementException
 
 # def login():
@@ -23,8 +24,8 @@ from selenium.common.exceptions import NoSuchElementException
 #     login_button.click()
 
 # назначаем переменную для вебдрайвера
+driver = webdriver.Chrome('.'+os.path.join(os.sep, 'chromedriver'))
 driver.delete_all_cookies()
-driver = webdriver.Chrome('C:\Python\Selenium\chromedriver.exe')
 driver.get('https://vk.com/')
 
 
@@ -48,14 +49,19 @@ def reg():
     name_list = []
     surname_list = []
 
+<<<<<<< HEAD
     # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
 
     with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
+=======
+    # импортируем имена и фамилии их txt-списков python списки
+    with open('.'+os.path.join(os.sep,'names', 'name_rus.txt'), 'r') as inf:
+>>>>>>> d0eb985c9445a8d8133687d8b05c53a777aa0987
         for eachLine in inf:
             a = eachLine.capitalize().strip().split("\n")
             name_list.append(a)
 
-    with open('C:\Python\Selenium\\autoreg\\names\\surname.txt', 'r') as inf:
+    with open('.'+os.path.join(os.sep,'names', 'surname.txt'), 'r') as inf:
         for eachLine in inf:
             a = eachLine.capitalize().strip().split("\n")
             surname_list.append(a)
@@ -105,7 +111,7 @@ def reg():
     # распаковываем txt-файл inf в словарь
 
     dict = {}
-    with open('C:\Python\Selenium\\autoreg\\inf.txt', 'r') as UrInf:
+    with open('.'+os.path.join(os.sep,'names', 'inf.txt'), 'r') as UrInf:
         for line in UrInf:
             listInf = line.strip().split(':')
             dict[listInf[0]] = listInf[1]
@@ -120,7 +126,9 @@ def reg():
     g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
 
     checkNumbers(g)
-
+    if g.text=="BAD_KEY":
+        print('Токен из файла inf.txt не работает')
+        exit(0)
     result = re.split(r':', g.text)
 
     # разбив полученной инфы на ID и номер

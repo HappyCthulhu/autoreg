@@ -1,1 +1,6 @@
 inf.txt 
+# Editors
+.vscode*
+.idea*
+.venv
+.111*
