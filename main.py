@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium import webdriver
 from selenium.webdriver.common import keys
 from time import sleep
 from selenium.webdriver.support.ui import WebDriverWait
@@ -49,11 +50,12 @@ def reg():
     name_list = []
     surname_list = []
 
-<<<<<<< HEAD
-    # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
-
-    with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
-=======
+# <<<<<<< HEAD
+# <<<<<<< HEAD
+#     # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
+#
+#     with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
+# =======
     # импортируем имена и фамилии их txt-списков python списки
     with open('.'+os.path.join(os.sep,'names', 'name_rus.txt'), 'r') as inf:
 >>>>>>> d0eb985c9445a8d8133687d8b05c53a777aa0987
@@ -116,11 +118,31 @@ def reg():
             listInf = line.strip().split(':')
             dict[listInf[0]] = listInf[1]
 
+    token = dict.get('token')
+
+    # находим самый дешевый номер
+
+    payload = {'api_key': f'{token}', 'action': 'getPrices', 'service': 'vk', 'operator': 'any'}
+    g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
+    responseDic = json.loads(g.text.replace("'", '"'))  # переводим в строку json, чтоб сделать словарем
+    keys = list(responseDic.keys())  # получаем список с номерами стран
+    lowestPriceList = [keys[0], responseDic[keys[0]]['vk']['cost']]  # создаем список, в котором будет номер страны с самой дешевой ценой аренды и добавляем первую страну
+
+    for elem in responseDic:
+        if responseDic[elem] == {} or responseDic[elem]['vk']['count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
+            continue
+        else:
+            if responseDic[elem]['vk']['cost'] >= lowestPriceList[1]: # если полученная цена больше цены из списка, берем другой номер
+                continue
+            else:  # если цена меньше
+                lowestPriceList.clear() # очищаем список
+                lowestPriceList += [elem, responseDic[elem]['vk']['cost'], responseDic[elem]['vk']['count']] # добавляем номер страны, цену и кол-во номеров
+    print('самая меньшая цена:', lowestPriceList)
+
     # запрос в сервис для получения номера
 
-    countryName = 'Россия'
+    countryName = dict.get('52')
     countryNumber = 0
-    token = dict.get('token')
     payload = {'api_key': f'{token}', 'action': 'getNumber', 'service': 'vk', 'operator': 'any',
                'country': f'{countryNumber}'}
     g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
