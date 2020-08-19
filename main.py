@@ -1,6 +1,6 @@
 from selenium import webdriver
 from selenium import webdriver
-from selenium.webdriver.common import keys
+from selenium.webdriver.common.keys import Keys
 from time import sleep
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.wait import WebDriverWait
@@ -11,6 +11,8 @@ import requests
 import re
 import os
 from selenium.common.exceptions import NoSuchElementException
+import json
+from selenium.webdriver.common.action_chains import ActionChains
 
 # def login():
 #     driver = webdriver.Chrome('C:\Python\Selenium\chromedriver.exe')
@@ -25,7 +27,7 @@ from selenium.common.exceptions import NoSuchElementException
 #     login_button.click()
 
 # назначаем переменную для вебдрайвера
-driver = webdriver.Chrome('.'+os.path.join(os.sep, 'chromedriver'))
+driver = webdriver.Chrome('.' + os.path.join(os.sep, 'chromedriver'))
 driver.delete_all_cookies()
 driver.get('https://vk.com/')
 
@@ -33,6 +35,9 @@ driver.get('https://vk.com/')
 def sendKeys(xPath, keys):
     driver.find_element_by_xpath(xPath).send_keys(keys)
 
+
+def clear(xPath):
+    return driver.find_element_by_xpath(xPath).clear()
 
 def click(xPath):
     return driver.find_element_by_xpath(xPath).click()
@@ -44,26 +49,26 @@ def checkNumbers(request):
     else:
         return True
 
+
 def reg():
     # создаем списки имен и фамилий
 
     name_list = []
     surname_list = []
 
-# <<<<<<< HEAD
-# <<<<<<< HEAD
-#     # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
-#
-#     with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
-# =======
+    # <<<<<<< HEAD
+    # <<<<<<< HEAD
+    #     # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
+    #
+    #     with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
+    # =======
     # импортируем имена и фамилии их txt-списков python списки
-    with open('.'+os.path.join(os.sep,'names', 'name_rus.txt'), 'r') as inf:
->>>>>>> d0eb985c9445a8d8133687d8b05c53a777aa0987
+    with open('.' + os.path.join(os.sep, 'names', 'name_rus.txt'), 'r', encoding='utf-8', errors='ignore') as inf:
         for eachLine in inf:
             a = eachLine.capitalize().strip().split("\n")
             name_list.append(a)
 
-    with open('.'+os.path.join(os.sep,'names', 'surname.txt'), 'r') as inf:
+    with open('.' + os.path.join(os.sep, 'names', 'surname.txt'), 'r', encoding='utf-8', errors='ignore') as inf:
         for eachLine in inf:
             a = eachLine.capitalize().strip().split("\n")
             surname_list.append(a)
@@ -113,7 +118,7 @@ def reg():
     # распаковываем txt-файл inf в словарь
 
     dict = {}
-    with open('.'+os.path.join(os.sep,'names', 'inf.txt'), 'r') as UrInf:
+    with open('.' + os.path.join(os.sep, 'names', 'inf.txt'), 'r') as UrInf:
         for line in UrInf:
             listInf = line.strip().split(':')
             dict[listInf[0]] = listInf[1]
@@ -126,29 +131,41 @@ def reg():
     g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
     responseDic = json.loads(g.text.replace("'", '"'))  # переводим в строку json, чтоб сделать словарем
     keys = list(responseDic.keys())  # получаем список с номерами стран
-    lowestPriceList = [keys[0], responseDic[keys[0]]['vk']['cost']]  # создаем список, в котором будет номер страны с самой дешевой ценой аренды и добавляем первую страну
+    lowestPriceList = [keys[0], responseDic[keys[0]]['vk'][
+        'cost']]  # создаем список, в котором будет номер страны с самой дешевой ценой аренды и добавляем первую страну
 
     for elem in responseDic:
-        if responseDic[elem] == {} or responseDic[elem]['vk']['count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
+        if responseDic[elem] == {} or responseDic[elem]['vk'][
+            'count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
             continue
         else:
-            if responseDic[elem]['vk']['cost'] >= lowestPriceList[1]: # если полученная цена больше цены из списка, берем другой номер
+            if responseDic[elem]['vk']['cost'] >= lowestPriceList[
+                1]:  # если полученная цена больше цены из списка, берем другой номер
                 continue
             else:  # если цена меньше
-                lowestPriceList.clear() # очищаем список
-                lowestPriceList += [elem, responseDic[elem]['vk']['cost'], responseDic[elem]['vk']['count']] # добавляем номер страны, цену и кол-во номеров
+                lowestPriceList.clear()  # очищаем список
+                lowestPriceList += [elem, responseDic[elem]['vk']['cost'],
+                                    responseDic[elem]['vk']['count']]  # добавляем номер страны, цену и кол-во номеров
     print('самая меньшая цена:', lowestPriceList)
+
+    # распаковываем коды стран
+
+    countriesCodesDic = {}
+    with open('.' + os.path.join(os.sep, 'names', 'countries_code.txt'), 'r', encoding='utf-8', errors='ignore') as countriesCodesFile:
+        for line in countriesCodesFile:
+            print(line)
+            listInf = line.strip().split(':')
+            countriesCodesDic[listInf[0]] = listInf[1]
 
     # запрос в сервис для получения номера
 
-    countryName = dict.get('52')
-    countryNumber = 0
+    countryName = countriesCodesDic.get(lowestPriceList[0])
     payload = {'api_key': f'{token}', 'action': 'getNumber', 'service': 'vk', 'operator': 'any',
-               'country': f'{countryNumber}'}
+               'country': f'{lowestPriceList[0]}'}
     g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
 
     checkNumbers(g)
-    if g.text=="BAD_KEY":
+    if g.text == "BAD_KEY":
         print('Токен из файла inf.txt не работает')
         exit(0)
     result = re.split(r':', g.text)
@@ -160,7 +177,7 @@ def reg():
 
     # убираем код страны
 
-    phoneNumbersClean = re.findall(r'(?<=0).*', phoneNumbers)
+    # phoneNumbersClean = re.findall(r'(?<=0).*', phoneNumbers)
 
     # Находим и вводим страну
     countryInput = driver.find_element_by_xpath('//input[@class="selector_input selected"]')
@@ -170,7 +187,12 @@ def reg():
 
     # находим и вводим телефон в поле ввода
 
-    sendKeys('//div[@class="prefix_input_field"]/input[@id="join_phone"]', phoneNumbersClean)
+    sendKeys('//div[@class="prefix_input_field"]/input[@id="join_phone"]', phoneNumbers)
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('c').key_up(Keys.CONTROL).perform()
+    clear('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
+    click('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
 
     # находим и кликаем по кнопке "Получить код"
 
@@ -225,5 +247,6 @@ def reg():
     sendKeys("//input[@id='join_pass']", r.getrandbits(50))
     sendKeys(u'\ue007')
     # click("//button[@id='join_send_pass']'")
+
 
 reg()
