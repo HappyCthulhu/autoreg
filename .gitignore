@@ -2,6 +2,6 @@ inf.txt
 # Editors
 .vscode*
 .idea*
-.venv
+venv*
 .111*
 chromedriver
