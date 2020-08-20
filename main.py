@@ -39,6 +39,7 @@ def sendKeys(xPath, keys):
 def clear(xPath):
     return driver.find_element_by_xpath(xPath).clear()
 
+
 def click(xPath):
     return driver.find_element_by_xpath(xPath).click()
 
@@ -49,20 +50,31 @@ def checkNumbers(request):
     else:
         return True
 
+    # отправляем запрос: получить смс-код
+
 
 def reg():
+    codeList = []
+
+    def getStatus(self):
+        payloadGetCode = {'api_key': f'{token}', 'action': 'getStatus', 'id': f'{ID}'}
+        getCodeRequest = requests.get('https://sms-activate.ru/stubs/handler_api.php',
+                                      params=payloadGetCode)
+        codeList = re.split(r':', getCodeRequest.text)
+        print('getCodeRequest:', getCodeRequest)
+        print('getCodeRequest.text:', getCodeRequest.text)
+        if getCodeRequest == 'STATUS_OK':
+            print('статус ок')
+            return True
+        else:
+            print('статус не ок')
+
     # создаем списки имен и фамилий
 
     name_list = []
     surname_list = []
 
-    # <<<<<<< HEAD
-    # <<<<<<< HEAD
-    #     # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
-    #
-    #     with open('C:\Python\Selenium\\autoreg\\names\\name_rus.txt', 'r') as inf:
-    # =======
-    # импортируем имена и фамилии их txt-списков python списки
+    # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
     with open('.' + os.path.join(os.sep, 'names', 'name_rus.txt'), 'r', encoding='utf-8', errors='ignore') as inf:
         for eachLine in inf:
             a = eachLine.capitalize().strip().split("\n")
@@ -151,7 +163,8 @@ def reg():
     # распаковываем коды стран
 
     countriesCodesDic = {}
-    with open('.' + os.path.join(os.sep, 'names', 'countries_code.txt'), 'r', encoding='utf-8', errors='ignore') as countriesCodesFile:
+    with open('.' + os.path.join(os.sep, 'names', 'countries_code.txt'), 'r', encoding='utf-8',
+              errors='ignore') as countriesCodesFile:
         for line in countriesCodesFile:
             print(line)
             listInf = line.strip().split(':')
@@ -175,23 +188,18 @@ def reg():
     ID = result[1]
     phoneNumbers = result[2]
 
-    # убираем код страны
-
-    # phoneNumbersClean = re.findall(r'(?<=0).*', phoneNumbers)
-
     # Находим и вводим страну
-    countryInput = driver.find_element_by_xpath('//input[@class="selector_input selected"]')
-    countryInput.clear()
-    countryInput.send_keys(countryName)
-    countryInput.send_keys(u'\ue007')
 
-    # находим и вводим телефон в поле ввода
+    clear('//input[@class="selector_input selected"]')
+    sendKeys('//input[@class="selector_input selected"]', countryName)
+    sendKeys('//td[@class="selector"]/input[@type="text"]', u'\ue007')
+
+    # находим и вводим телефон в поле ввода, вырезаем и вставляем
 
     sendKeys('//div[@class="prefix_input_field"]/input[@id="join_phone"]', phoneNumbers)
     ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
-    ActionChains(driver).key_down(Keys.CONTROL).send_keys('c').key_up(Keys.CONTROL).perform()
-    clear('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
-    click('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('x').key_up(Keys.CONTROL).perform()
+    # click('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
     ActionChains(driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
 
     # находим и кликаем по кнопке "Получить код"
@@ -209,7 +217,7 @@ def reg():
     # except NoSuchElementException:
     #     print('Zero element for U!', 'Номер не заблокирован')
     #     return True
-
+    #
     time.sleep(2)
 
     # Клик по "Отправить код с помощью смс"
@@ -218,23 +226,19 @@ def reg():
 
     # отправляем запрос: номер готов к получению смс
 
-    payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '1', 'id': f'{ID}',
-                                 'forward': f'{phoneNumbersClean}'}
+    payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '1', 'id': f'{ID}'}
     numberIsReadyRequest = requests.get('https://sms-activate.ru/stubs/handler_api.php',
                                         params=payloadNumberReadyRequest)
     print(numberIsReadyRequest.text)
 
-    # отправляем запрос: получить смс-код
+    # ждем, пока не придет код
 
-    payloadGetCode = {'api_key': f'{token}', 'action': 'getStatus', 'id': f'{ID}'}
-    getCodeRequest = requests.get('https://sms-activate.ru/stubs/handler_api.php',
-                                  params=payloadGetCode)
-    codeList = re.split(r':', getCodeRequest.text)
-    code = codeList[1]
+    WebDriverWait(driver, 60, 5).until(getStatus, "смска не пришла")
+    print('смска:', codeList[1])
 
     # вводим код в input "Введите код"
 
-    sendKeys('//input[@id="join_code"]', code)
+    sendKeys('//input[@id="join_code"]', codeList[1])
 
     # клик по кнопке "Отправить код"
 
@@ -243,6 +247,7 @@ def reg():
     # time.sleep(3)
 
     # вводим пароль
+    WebDriverWait(driver, 5, 0.5).until()
 
     sendKeys("//input[@id='join_pass']", r.getrandbits(50))
     sendKeys(u'\ue007')

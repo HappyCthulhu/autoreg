@@ -1,0 +1,15 @@
+[0819/215736.808:ERROR:file_io.cc(134)] WriteFile: Недостаточно места на диске. (0x70)
+[0819/215736.809:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0819/215736.809:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir26016_625381556\Crashpad\reports\6cf10cd5-4927-4ac2-8b75-548debbe6261.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0819/215859.669:ERROR:file_io.cc(134)] WriteFile: Недостаточно места на диске. (0x70)
+[0819/215859.670:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0819/215859.671:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir31884_1676973107\Crashpad\reports\e477e136-63af-41cf-8946-bc76e235add3.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0819/215908.630:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir2172_1182045147\Crashpad\reports\f0dc16c3-81ef-42b8-8c06-8706e5457ff6.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0819/215912.449:ERROR:registration_protocol_win.cc(131)] TransactNamedPipe: Канал был закрыт. (0x6D)
+[0819/215914.109:ERROR:crashpad_client_win.cc(132)] crash server failed to launch, self-terminating
+[0820/162440.473:ERROR:file_io.cc(134)] WriteFile: Недостаточно места на диске. (0x70)
+[0820/162440.475:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0820/162440.475:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir13564_356339852\Crashpad\reports\0654f023-c967-4b4e-b612-3ff49bc77336.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0820/162451.751:ERROR:file_io.cc(134)] WriteFile: Недостаточно места на диске. (0x70)
+[0820/162451.752:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0820/162451.752:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir22692_836944623\Crashpad\reports\8b55e51b-1de6-49c3-9533-7d090fdd5cd2.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
