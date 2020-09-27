@@ -1,12 +1,13 @@
 inf.txt 
 login, pass.txt
 proxies.txt
-debug.log
+/debug.log
+/chromedriver.exe
 myfile.txt
 # Editors
 .vscode*
 .idea*
 venv*
-test.py
+/test.py
 .111*
 chromedriver

@@ -45,7 +45,7 @@ def main_func():
     # Проверяем, пустой ли файл. Если да - пропускаем установку прокси, если нет - подключаемся к ней
 
     def type_proxy():
-        with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
+        with open('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
                   errors='ignore') as proxies_file:
             for line in proxies_file:
                 proxies_list = line.strip('\n').split(':')
@@ -57,10 +57,10 @@ def main_func():
                     logger.critical('Тип прокси не определен')
 
     def proxy_get():
-        if os.path.getsize('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt')) > 0:
+        if os.path.getsize('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt')) > 0:
             if type_proxy() == 'private proxy':
                 logger.debug('Тип вашего прокси - приватный')
-                with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
+                with open('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
                           errors='ignore') as proxies_file:
                     line = proxies_file.readline()
                     proxies_list = line.strip('\n').split(':')
@@ -89,7 +89,7 @@ def main_func():
 
             else:
                 logger.debug('Тип вашего прокси - открытый')
-                with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'r', encoding='utf-8',
+                with open('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt'), 'r', encoding='utf-8',
                           errors='ignore') as proxies_file:
                     line = proxies_file.readline()
                     chrome_options = webdriver.ChromeOptions()
@@ -103,7 +103,7 @@ def main_func():
 
     # проверяем, существует ли proxies.txt
 
-    exist_proxies_file_check = os.path.exists('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'))
+    exist_proxies_file_check = os.path.exists('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt'))
 
     # если существует, берем инфу
 
@@ -116,7 +116,7 @@ def main_func():
 
         else:
             logger.info('proxies.txt не существует, создаю файл в папке txtfiles')
-            with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'w') as proxies_file:
+            with open('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt'), 'w') as proxies_file:
                 logger.info(
                     'Ниже введите прокси в формате login:pass:ip:port. Если не хотите использовать прокси - нажмите Enter')
                 proxies_str = input()
@@ -212,7 +212,7 @@ def main_func():
             logger.info(f'Отправили запрос на отмену активации: {number_is_ready_request.text}')
             logger.debug('Берем другую страну')
 
-            country_get()  # функция, которая другую страну берет
+                country_get()  # функция, которая другую страну берет
 
         else:
             sys.exit()  # заканчиваем работу скрипта
@@ -317,24 +317,24 @@ def main_func():
 
     # проверяем, существует ли login, pass.txt
 
-    exist_loginpass_file_check = os.path.exists('.' + os.path.join(os.sep, 'txtfiles', 'login, pass.txt'))
+    exist_loginpass_file_check = os.path.exists('.' + os.path.join(os.sep, 'yourfiles', 'login, pass.txt'))
 
     if exist_loginpass_file_check == True:
         logger.debug('Файл "login, pass.txt" существует')
         pass
     else:
-        open('.' + os.path.join(os.sep, 'txtfiles', 'login, pass.txt'), 'w', encoding='utf-8')
+        open('.' + os.path.join(os.sep, 'yourfiles', 'login, pass.txt'), 'w', encoding='utf-8')
         logger.info('Файл "login, pass.txt" не существует, создал новый')
 
     # проверяем, существует ли inf.txt
 
-    exist_inf_file_check = os.path.exists('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'))
+    exist_inf_file_check = os.path.exists('.' + os.path.join(os.sep, 'yourfiles', 'inf.txt'))
 
     # если существует, берем инфу
 
     if exist_inf_file_check == True:
         logger.debug('Файл "inf.txt" существует')
-        with open('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'), 'r', encoding='utf-8-sig',
+        with open('.' + os.path.join(os.sep, 'yourfiles', 'inf.txt'), 'r', encoding='utf-8-sig',
                   errors='ignore') as url_inf:
             for line in url_inf:
                 list_inf = line.strip('\n').split(':')
@@ -344,7 +344,7 @@ def main_func():
 
     else:
         logger.info('inf.txt не существует, создаю файл в папке txtfiles')
-        with open('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'), 'w', encoding='utf-8-sig') as url_inf:
+        with open('.' + os.path.join(os.sep, 'yourfiles', 'inf.txt'), 'w', encoding='utf-8-sig') as url_inf:
             logger.info('Ниже введите токен вашего аккаунта на sms-activate')
             token = input()
             logger.info(
@@ -355,7 +355,7 @@ def main_func():
                           'Подсказка:если хотите пользоваться автоподбором страны с самой дешевой ценой номера, задайте country_name значение False')
             url_inf.close()
 
-            with open('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'), 'r', encoding='utf-8-sig') as url_inf:
+            with open('.' + os.path.join(os.sep, 'yourfiles', 'inf.txt'), 'r', encoding='utf-8-sig') as url_inf:
                 for line in url_inf:
                     list_inf = line.strip().split(':')
                     dict[list_inf[0]] = list_inf[1]
@@ -537,7 +537,7 @@ def main_func():
     # записываем в файлик логин и пароль
 
     login_pass = name + '&' + surname + '#' + phone_numbers_str + ':' + password
-    with open('.' + os.path.join(os.sep, 'txtfiles', 'login, pass.txt'), 'a') as passLoginFile:
+    with open('.' + os.path.join(os.sep, 'yourfiles', 'login, pass.txt'), 'a') as passLoginFile:
         passLoginFile.writelines('\n' + login_pass)
     logger.debug(f'Информация о созданном аккаунте находится в директории autoreg/txtfiles/login, pass.txt')
     logger.debug(f'Аккаунт: {login_pass}')
