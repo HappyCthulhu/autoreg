@@ -212,7 +212,7 @@ def main_func():
             logger.info(f'Отправили запрос на отмену активации: {number_is_ready_request.text}')
             logger.debug('Берем другую страну')
 
-                country_get()  # функция, которая другую страну берет
+            country_get()  # функция, которая другую страну берет
 
         else:
             sys.exit()  # заканчиваем работу скрипта
