@@ -1,446 +1,551 @@
+import os
+import re
+import sys
+import time
+import json
+import requests
+import random as r
+
+from loguru import logger
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
+from collections import OrderedDict
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
-import random as r
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
-import time, requests, re, os, json
-from selenium.webdriver.common.action_chains import ActionChains
-from collections import OrderedDict
-import sys
-
-# def login():
-#     driver = webdriver.Chrome('C:\Python\Selenium\chromedriver.exe')
-#     driver.get('https://vk.com/')
-#     phoneOrEmail_input = driver.find_element_by_xpath('//input[@id="index_email"]')
-#     password_input = driver.find_element_by_xpath('//input[@id="index_pass"]')
-#
-#     phoneOrEmail_input.send_keys('+77079668226')
-#     password_input.send_keys('huy7891')
-#
-#     login_button = driver.find_element_by_xpath('//button[@class="index_login_button flat_button button_big_text"]')
-#     login_button.click()
-
-# назначаем переменную для вебдрайвера
-
-ID = 0
-driver = webdriver.Chrome('.' + os.path.join(os.sep, 'chromedriver'))
-driver.delete_all_cookies()
-driver.get('https://vk.com/')
-smsCode = 0
-codeList = []
-firstNumberOfCountriesList = 0
-phoneNumbers = 0
-
-def sendKeys(xPath, keys):
-    driver.find_element_by_xpath(xPath).send_keys(keys)
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
-def clear(xPath):
-    return driver.find_element_by_xpath(xPath).clear()
+def main_func():
+    logger.remove()
+    # настраиваем логгирование
 
+    def debug_only(record):
+        return record["level"].name == "DEBUG"
 
-def click(xPath):
-    return driver.find_element_by_xpath(xPath).click()
+    def critical_only(record):
+        return record["level"].name == "CRITICAL"
 
+    def info_only(record):
+        return record["level"].name == "INFO"
 
-# def checkNumbers(request):
-#     if request.text == 'NO_NUMBERS':
-#         print('нет номеров')
-#     else:
-#         print('Доступные номера есть')
-#         return True
+    logger_format_debug = "<green>{time:DD-MM-YY HH:mm:ss}</> | <bold><blue>{level}</></> | <cyan>{file}:{function}:{line}</> | <blue>{message}</> | <blue>🛠</>"
+    logger_format_info = "<green>{time:DD-MM-YY HH:mm:ss}</> | <bold><fg 255,255,255>{level}</></> | <cyan>{file}:{function}:{line}</> | <fg 255,255,255>{message}</> | <fg 255,255,255>✔</>"
+    logger_format_critical = "<green>{time:DD-MM-YY HH:mm:ss}</> | <RED><fg 255,255,255>{level}</></> | <cyan>{file}:{function}:{line}</> | <fg 255,255,255><RED>{message}</></> | <RED><fg 255,255,255>❌</></>"
 
-# распаковываем txt-файл inf в словарь
+    logger.add(sys.stderr, format=logger_format_debug, level='DEBUG', filter=debug_only)
+    logger.add(sys.stderr, format=logger_format_info, level='INFO', filter=info_only)
+    logger.add(sys.stderr, format=logger_format_critical, level='CRITICAL', filter=critical_only)
+    # logger.add('myfile.log', format=logger_format_debug, level='DEBUG', filter=debug_only)
 
-dict = {}
-with open('.' + os.path.join(os.sep, 'names', 'inf.txt'), 'r') as UrInf:
-    for line in UrInf:
-        listInf = line.strip().split(':')
-        dict[listInf[0]] = listInf[1]
+    # Присваиваем значение переменных
 
-token = dict.get('token')
-print('распаковали txt-файл, взяли из него токен: |', token)
-countryNumberFromFile = dict.get('countryNumber')
-print('распаковали txt-файл, взяли из номер страны: |', countryNumberFromFile)
+    countries_codes_dict, dict, proxies_dict, numbers_of_countries_list = {}, {}, {}, []
+    ID, phone_numbers, sms_code = None, None, None
 
-# распаковываем коды стран
+    # Проверяем, пустой ли файл. Если да - пропускаем установку прокси, если нет - подключаемся к ней
 
-countriesCodesDic = {}
-with open('.' + os.path.join(os.sep, 'names', 'countries_code.txt'), 'r', encoding='utf-8',
-          errors='ignore') as countriesCodesFile:
-    for line in countriesCodesFile:
-        listInf = line.strip().split(':')
-        countriesCodesDic[listInf[0]] = listInf[1]
-print('распаковали коды стран')
+    def type_proxy():
+        with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
+                  errors='ignore') as proxies_file:
+            for line in proxies_file:
+                proxies_list = line.strip('\n').split(':')
+                if len(proxies_list) == 2:
+                    return 'simple proxy'
+                elif len(proxies_list) == 4:
+                    return 'private proxy'
+                else:
+                    logger.critical('Тип прокси не определен')
 
+    def proxy_get():
+        if os.path.getsize('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt')) > 0:
+            if type_proxy() == 'private proxy':
+                logger.debug('Тип вашего прокси - приватный')
+                with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
+                          errors='ignore') as proxies_file:
+                    line = proxies_file.readline()
+                    proxies_list = line.strip('\n').split(':')
+                    login_proxy = proxies_list[0]
+                    password_proxy = proxies_list[1]
+                    ip_proxy = proxies_list[2]
+                    port_proxy = proxies_list[3]
 
-# проверка статуса
+                    options = webdriver.ChromeOptions()
+                    PROXY = ip_proxy + ':' + port_proxy
+                    options.add_extension("Proxy_Auto_Auth.crx")
+                    options.add_argument("--proxy-server=http://{}".format(PROXY))
 
-def getStatus():
-    payloadGetCode = {'api_key': f'{token}', 'action': 'getStatus', 'id': f'{ID}'}
-    responce = requests.get('https://sms-activate.ru/stubs/handler_api.php',
-                            params=payloadGetCode)
-    codeList.append(re.split(r':', responce.text))
-    print('getCodeRequest.text:', responce.text)
-    return responce
+                    driver = webdriver.Chrome(options=options)
 
+                    driver.get("chrome-extension://ggmdpepbjljkkkdaklfihhngmmgmpggp/options.html")
 
-def responceAnalise(responce):
-    print(responce)
-    print(responce.text)
-    if 'STATUS_OK' in responce.text:
-        print('статус ок')
-        return responce.text
-    elif responce.text == 'STATUS_WAIT_CODE':
-        print('ожидаем смс')
-        return False
-    elif responce.text == 'NO_BALANCE':
-        print('денег нет')
-        return False
-    elif responce.text == 'NO_NUMBERS':
-        print('нет номеров')
-        return 2
-    elif responce.text == 'BAD_KEY':
-        print('Токен из файла inf.txt не работает')
-        return False
-    elif 'ACCESS_NUMBER' in responce.text:
-        print('номер пришел')
-        return 1
-    else:
-        print(responce.text, 'Что-то пошло не так')
-        return False
+                    driver.find_element_by_id("login").send_keys(login_proxy)
+                    driver.find_element_by_id("password").send_keys(password_proxy)
+                    driver.find_element_by_id("retry").clear()
+                    driver.find_element_by_id("retry").send_keys("2")
+                    driver.find_element_by_id("save").click()
+                    logger.debug('Прокси успешно подключен')
 
+                    return driver
 
-# создаем списки имен и фамилий
+            else:
+                logger.debug('Тип вашего прокси - открытый')
+                with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'r', encoding='utf-8',
+                          errors='ignore') as proxies_file:
+                    line = proxies_file.readline()
+                    chrome_options = webdriver.ChromeOptions()
+                    chrome_options.add_argument('--proxy-server=%s' % line)
+                    driver = webdriver.Chrome(options=chrome_options)
+                    return driver
 
-name_list = []
-surname_list = []
-
-# импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
-with open('.' + os.path.join(os.sep, 'names', 'name_rus.txt'), 'r', encoding='utf-8', errors='ignore') as inf:
-    for eachLine in inf:
-        a = eachLine.capitalize().strip().split("\n")
-        name_list.append(a)
-
-with open('.' + os.path.join(os.sep, 'names', 'surname.txt'), 'r', encoding='utf-8', errors='ignore') as inf:
-    for eachLine in inf:
-        a = eachLine.capitalize().strip().split("\n")
-        surname_list.append(a)
-
-print('Распаковали имена и фамилии')
-
-# рандомно выбираем имя и фамилию и вставляем в инпуты
-name = r.choice(name_list)
-name = name[0]
-surname = r.choice(surname_list)
-surname = surname[0]
-sendKeys('//input[@id="ij_first_name"]', name)
-sendKeys('//input[@id="ij_last_name"]', surname)
-
-# находим и кликаем по полю "день", из выпадающего списка рандомно выбираем день от 1 до 28. Кликаем
-
-click("//div[@id='container1']")
-dayRandomCount = r.randint(1, 28)
-dayCount = driver.find_element_by_xpath("//ul[@id='list_options_container_1']/li[text() = '%s']" % dayRandomCount)
-dayCount.click()
-
-# находим и кликаем по полю "месяц", из выпадающего списка рандомно выбираем месяц. Кликаем
-
-click("//div[@id='container2']")
-monthsList = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 'Июля', 'Августа', 'Сентября', 'Октября',
-              'Ноября', 'Декабря']
-month = r.choice(monthsList)
-monthLi = driver.find_element_by_xpath("//ul[@id='list_options_container_2']/li[text() = '%s']" % month)
-monthLi.click()
-
-# находим и кликаем по полю "год", из выпадающего списка рандомно выбираем год от 1980 до 2001. Кликаем
-
-click("//div[@id='container3']")
-yearRandomCount = r.randint(1980, 2001)
-yearLi = driver.find_element_by_xpath("//ul[@id='list_options_container_3']/li[text() = '%s']" % yearRandomCount)
-yearLi.click()
-
-print('Заполнили поля имени, фамилии, дня, месяца, года')
-
-# клик на кнопку "зарегистрироваться"
-
-click("//button[@id='ij_submit']")
-time.sleep(1)
-print('Нажали "зарегистрироваться"')
-
-# проверка, открылась ли следующая страница
-
-regUrl = driver.current_url
-if regUrl == "https://vk.com/":
-    tabIndex = r.randint(-1, 0)
-    sexDiv = driver.find_element_by_xpath("//div[@id='ij_sex_row']/div[@tabindex='%s']" % tabIndex)
-    sexDiv.click()
-    click("//button[@id='ij_submit']")
-
-# находим самый дешевый номер
-# отправляем запрос на получение инфы о номерах
-
-payload = {'api_key': f'{token}', 'action': 'getPrices', 'service': 'vk', 'operator': 'any'}
-g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
-responseDic = json.loads(g.text.replace("'", '"'))  # переводим в строку json, чтоб сделать словарем
-
-# создаем и заполняем словарик: {номер страны: цена телефона этой страны}
-
-numberCostDic = {}
-for elem in responseDic:
-    if responseDic[elem] == {}:  # проверка, не пустая ли эта часть словаря
-        continue
-    else:
-        if responseDic[elem]['vk']['count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
-            continue
         else:
-            numberCostDic[elem] = responseDic[elem]['vk'][
-                'cost']  # добавляем в словарь значения
+            logger.debug('Вы не задали никакого прокси')
+            return webdriver.Chrome
 
-# сортируем словарик по возрастанию цены стран
+    # проверяем, существует ли proxies.txt
 
-orderedNumberCostDic = OrderedDict(
-    sorted(numberCostDic.items(), key=lambda t: t[1]))
+    exist_proxies_file_check = os.path.exists('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'))
 
-# создаем список с номерами стран в порядке возрастания цены
+    # если существует, берем инфу
 
-numbersOfCountriesList = []
-for numberOfCountry in orderedNumberCostDic:
-    numbersOfCountriesList.append(numberOfCountry)
+    def proxy_main():
 
-print('создали список стран в порядке возрастания цены: ', numbersOfCountriesList)
+        if exist_proxies_file_check == True:
+            logger.debug('Файл "proxies.txt" существует')
 
+        # если не существует, просим пользователя ввести login:pass:ip:port прокси
 
-def countryGet():
-    global ID
-    global phoneNumbers
+        else:
+            logger.info('proxies.txt не существует, создаю файл в папке txtfiles')
+            with open('.' + os.path.join(os.sep, 'txtfiles', 'proxies.txt'), 'w') as proxies_file:
+                logger.info(
+                    'Ниже введите прокси в формате login:pass:ip:port. Если не хотите использовать прокси - нажмите Enter')
+                proxies_str = input()
+                proxies_file.write(proxies_str)
+                proxies_file.close()
+        return proxy_get()
 
-    firstNumberOfCountriesList = numbersOfCountriesList[0]  # берем первую страну из словарика
-    numbersOfCountriesList.remove(firstNumberOfCountriesList)  # удаляем первую страну из словарика
-    print(firstNumberOfCountriesList)
+    # Назначаем финальное значение драйвера
 
-    if countryNumberFromFile == 'False':  # проверяем, есть ли в файлике заданная страна
-        pass
-    else:
-        firstNumberOfCountriesList = countryNumberFromFile
-        print('переназначили страну на данную из файлика. Код страны:', firstNumberOfCountriesList)
+    driver = proxy_main()
 
-    # запрос в сервис для получения номера
+    def send_keys(xpath, keys):
+        driver.find_element_by_xpath(xpath).send_keys(keys)
 
-    countryName = countriesCodesDic.get(firstNumberOfCountriesList)
-    print('Берем страну:', countryName, ' с номером: ', firstNumberOfCountriesList)
-    payload = {'api_key': f'{token}', 'action': 'getNumber', 'service': 'vk', 'operator': 'any',
-               'country': f'{firstNumberOfCountriesList}'}
-    g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
+    def clear(xpath):
+        return driver.find_element_by_xpath(xpath).clear()
 
-    if responceAnalise(g) == 1:
-        pass
-    elif responceAnalise(g) == 2:
-        payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{ID}'}
-        numberIsReadyRequest = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-                                             params=payloadNumberReadyRequest)
-        print('отправили запрос на отмену активации: ', numberIsReadyRequest.text)
+    def click(xpath):
+        return driver.find_element_by_xpath(xpath).click()
 
-        print('Берем другую страну')
-        countryGet()  # функция, которая другую страну берет
+    # запрос статуса номера
 
-    else:
-        sys.exit()  # заканчиваем работу скрипта
+    def get_status():
+        payload_get_code = {'api_key': f'{token}', 'action': 'getStatus', 'id': f'{ID}'}
+        response = requests.get('https://sms-activate.ru/stubs/handler_api.php',
+                                params=payload_get_code)
+        return response
 
-    # проверка, точно ли есть номера
+    # анализ пришедшего ответа
 
-    # checkNumbers(g)
-
-    # проверка токена
-
-    # if g.text == "BAD_KEY":
-    #     print('Токен из файла inf.txt не работает')
-    #     exit(0)
-    # else:
-    #     print('С токеном все окей')
-    result = re.split(r':', g.text)
-
-    # разбив полученной инфы на ID и номер
-
-    print(result)
-    ID = result[1]
-    print(ID)
-    phoneNumbers = result[2]
-    print('Получили номер: |', phoneNumbers, ' и ID операции: |', ID)
-
-    # Находим и вводим страну
-
-    clear('//input[@class="selector_input selected"]')
-    sendKeys('//input[@class="selector_input selected"]', countryName)
-    sendKeys('//td[@class="selector"]/input[@type="text"]', u'\ue007')
-
-    # находим и вводим телефон в поле ввода, вырезаем и вставляем
-
-    # codeNumbersofCountry = driver.find_element_by_xpath("//div[@id='join_phone_prefix']/nobr")
-    # codeNumbersofCountry.get_attribute('innerHTML')
-    # codeNumbersofCountryWithoutPlus = re.split(r'(?<=\+).*', codeNumbersofCountry)
-    # phoneNumbers = re.split(r'(?<=codeNumbersofCountryWithoutPlus).*')
-
-    clear('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
-    sendKeys('//div[@class="prefix_input_field"]/input[@id="join_phone"]', phoneNumbers)
-    ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
-    ActionChains(driver).key_down(Keys.CONTROL).send_keys('x').key_up(Keys.CONTROL).perform()
-    ActionChains(driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
-
-    # находим и кликаем по кнопке "Получить код"
-
-    click('//button[@id="join_send_phone"]')
-
-    # надо сделать проверку наличия окна "я не робот": //div[@class="popup_box_container"]
-
-    # проверяем наличия div "Номер заблокирован"
-    time.sleep(1)
-
-    try:
-        driver.find_element_by_xpath("//div[@class='msg_text']")
-        print('Вк заблокировал номер')
-        # click('//a[@id="join_other_phone"]')
-
-        payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{ID}'}
-        numberIsReadyRequest = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-                                             params=payloadNumberReadyRequest)
-        print('отправили запрос на отмену активации: ', numberIsReadyRequest.text)
-
-        print('Берем другую страну')
-        countryGet()  # функция, которая другую страну берет
-
-    except NoSuchElementException:
-        print('Вк не заблокировал номер')
-        pass
-
-    # проверяем наличия div "Неверный номер телефона. Введите в международном формате"
-
-    try:
-        driver.find_element_by_xpath("//div[@class='msg error']")
-        print('Неверный номер телефона. Введите в международном формате')
-
-        payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{ID}'}
-        numberIsReadyRequest = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-                                             params=payloadNumberReadyRequest)
-        print('отправили запрос на отмену активации: ', numberIsReadyRequest.text)
-
-        countryGet()  # функция, которая другую страну берет
-    except NoSuchElementException:
-        print('Международный формат - ок')
-        pass
-
-    # проверка наличия блока "Мы только что повторно выслали вам смс с кодом" или кнопки "Я не получил код"
-
-    try:
-        # driver.find_element_by_xpath('//div[@class="box_layout"]')
-        driver.find_element_by_xpath("//a[@id='join_resend_lnk']")
-    except NoSuchElementException:
-        # проверка готовности кнопки "Отправить код с помощью смс"
-        print('Ожидаю появления кнопки для отправки кода с помощью смс')
-        WebDriverWait(driver, 140).until(EC.presence_of_element_located((By.XPATH, "//a[@id='join_resend_lnk']")))
-
-        # клик по "Отправить код с помощью смс"
-
-        click('//a[@id="join_resend_lnk"]')
-        print('нажал "отправить код с помощью смс"')
-
-    # отправляем запрос: номер готов к получению смс
-
-    payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '1', 'id': f'{ID}'}
-    numberIsReadyRequest = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-                                         params=payloadNumberReadyRequest)
-    print('отправили запрос на изменения статуса: ', numberIsReadyRequest.text)
-
-
-# вызываем функцию, которая определяет страну
-
-countryGet()
-
-# ждем, пока не придет код
-
-try:
-    def responceNext(self):
-        global smsCode
-        print('getStatus:', getStatus())
-        print('responceAnalise(getStatus())', responceAnalise(getStatus()))
-        smsCode = responceAnalise(getStatus())
-        print('тип smsCoDe:', type(smsCode))
-        if smsCode == False:
+    def response_analise(response):
+        if 'STATUS_OK' in response.text:
+            logger.debug(f'Смс пришло. Код: {response.text}')
+            return response.text
+        elif response.text == 'STATUS_WAIT_CODE':
+            logger.debug('Ожидаем смс')
+            return False
+        elif response.text == 'NO_BALANCE':
+            logger.critical('Денег нет')
+            return False
+        elif response.text == 'NO_NUMBERS':
+            logger.debug('Нет номеров')
+            return 'NO_NUMBERS'
+        elif response.text == 'BAD_KEY':
+            logger.critical('Токен из файла inf.txt не работает')
+            return False
+        elif 'ACCESS_NUMBER' in response.text:
+            return 'ACCESS_NUMBER'
+        elif 'BAD_STATUS' in response.text:
+            logger.critical('Что-то не так с ID операции')
             return False
         else:
-            smsCode = smsCode.split(':')
-            smsCode = smsCode[1]
-            print('smsCoDe[1]:', smsCode)
-            print(smsCode)
-            return smsCode
+            logger.critical(f'Что-то пошло не так. Ответ sms-activate: {response.text}')
+            return False
+
+    # прием и распаковка кода смс
+
+    def response_next(self):
+        sms_code = response_analise(get_status())
+        if sms_code == False:
+            return False
+        else:
+            sms_code = sms_code.split(':')[1]
+            return sms_code
+
+    def country_get():
+
+        # проверяем, есть ли в файлике заданная страна
+        # если пользователь воспользовался подбором дешевой страны:
+        if country_name_from_inf == 'False':
+            country_code_final = number_of_the_cheapest_country
+        # если пользователь не воспользовался подбором дешевой страны:
+        else:
+            country_code_final = country_code_from_user
+
+        # запрос в сервис для получения номера
+
+        logger.debug(f'Берем страну: {country_name_from_inf} с номером: {country_code_final}')
+        payload = {'api_key': f'{token}', 'action': 'getNumber', 'service': 'vk', 'operator': 'any',
+                   'country': f'{country_code_final}'}
+        g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
+
+        if response_analise(g) == 'ACCESS_NUMBER':
+            pass
+
+        # если номеров нет
+
+        elif response_analise(g) == 'NO_NUMBERS':
+            payload_number_is_ready_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8',
+                                               'id': f'{ID}'}
+            number_is_ready_request = requests.post('https://sms-activate.ru/stubs/handler_api.php',
+                                                    params=payload_number_is_ready_request)
+            logger.info(f'Отправили запрос на отмену активации: {number_is_ready_request.text}')
+            logger.debug('Берем другую страну')
+
+            country_get()  # функция, которая другую страну берет
+
+        else:
+            sys.exit()  # заканчиваем работу скрипта
+
+        result = re.split(r':', g.text)
+
+        # разбив полученной инфы на ID и номер
+
+        ID = result[1]
+        phone_numbers = re.findall(r'\d{10}$', result[2])[0]
+        logger.debug(f'Получили номер: {phone_numbers} и ID операции: {ID}')
+
+        # Находим и вводим страну
+
+        clear('//input[@class="selector_input selected"]')
+        send_keys('//input[@class="selector_input selected"]', country_name_from_inf)
+        send_keys('//td[@class="selector"]/input[@type="text"]', u'\ue007')
+
+        # находим и вводим телефон в поле ввода, вырезаем и вставляем
+
+        clear('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
+        send_keys('//div[@class="prefix_input_field"]/input[@id="join_phone"]', phone_numbers)
+
+        # Ctrl+A, Ctrl+X, Ctrl+V телефонного номера:
+
+        # ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+        # ActionChains(driver).key_down(Keys.CONTROL).send_keys('x').key_up(Keys.CONTROL).perform()
+        # ActionChains(driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+
+        # находим и кликаем по кнопке "Получить код"
+
+        click('//button[@id="join_send_phone"]')
+
+        # надо сделать проверку наличия окна "я не робот": //div[@class="popup_box_container"]
+
+        # проверяем наличия div "Номер заблокирован"
+        time.sleep(1)
+
+        try:
+            driver.find_element_by_xpath("//div[@class='msg_text']")
+            logger.info('Вк заблокировал номер')
+            payload_number_is_ready_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8',
+                                               'id': f'{ID}'}
+            number_is_ready_request = requests.post('https://sms-activate.ru/stubs/handler_api.php',
+                                                    params=payload_number_is_ready_request)
+            logger.debug(f'отправили запрос на отмену активации: {number_is_ready_request.text}')
+            logger.debug('Берем другую страну')
+
+            ID, phone_numbers = country_get()  # функция, которая другую страну берет
+
+        except NoSuchElementException:
+            logger.debug('Вк не заблокировал номер')
+            pass
+
+        # проверяем наличия div "Неверный номер телефона. Введите в международном формате"
+
+        try:
+            driver.find_element_by_xpath("//div[@class='msg error']")
+            logger.info('Неверный номер телефона. Введите в международном формате')
+
+            payload_number_is_ready_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8',
+                                               'id': f'{ID}'}
+            number_is_ready_request = requests.post('https://sms-activate.ru/stubs/handler_api.php',
+                                                    params=payload_number_is_ready_request)
+            logger.debug('отправили запрос на отмену активации: ', number_is_ready_request.text)
+
+            ID, phone_numbers = country_get()  # функция, которая другую страну берет
+
+        except NoSuchElementException:
+            logger.debug('Международный формат - ок')
+            pass
+
+        # проверка наличия блока "Мы только что повторно выслали вам смс с кодом", надписи "Введите код" или кнопки "Я не получил код"
+
+        send_code_button = driver.find_element_by_xpath("//div[@id='join_code_row']")
+
+        if send_code_button.is_displayed() == True:
+            logger.debug('Div, содержащий "Введите код" доступен')
+        else:
+            # проверка готовности кнопки "Отправить код с помощью смс"
+            logger.debug('Ожидаю появления кнопки для отправки кода с помощью смс')
+            WebDriverWait(driver, 140).until(EC.presence_of_element_located((By.XPATH, "//a[@id='join_resend_lnk']")))
+
+            # клик по "Отправить код с помощью смс"
+
+            click('//a[@id="join_resend_lnk"]')
+            logger.debug('Нажал "Отправить код с помощью смс"')
+
+        # отправляем запрос: номер готов к получению смс
+
+        payload_number_is_ready_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '1', 'id': f'{ID}'}
+        number_is_ready_request = requests.post('https://sms-activate.ru/stubs/handler_api.php',
+                                                params=payload_number_is_ready_request)
+        logger.debug(f'отправили запрос на изменения статуса: {number_is_ready_request.text}')
+
+        return ID, phone_numbers
+
+    # удаляем куки и переходим на страницу
+
+    driver.delete_all_cookies()
+    driver.get('https://vk.com/')
+
+    # проверяем, существует ли login, pass.txt
+
+    exist_loginpass_file_check = os.path.exists('.' + os.path.join(os.sep, 'txtfiles', 'login, pass.txt'))
+
+    if exist_loginpass_file_check == True:
+        logger.debug('Файл "login, pass.txt" существует')
+        pass
+    else:
+        open('.' + os.path.join(os.sep, 'txtfiles', 'login, pass.txt'), 'w', encoding='utf-8')
+        logger.info('Файл "login, pass.txt" не существует, создал новый')
+
+    # проверяем, существует ли inf.txt
+
+    exist_inf_file_check = os.path.exists('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'))
+
+    # если существует, берем инфу
+
+    if exist_inf_file_check == True:
+        logger.debug('Файл "inf.txt" существует')
+        with open('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'), 'r', encoding='utf-8-sig',
+                  errors='ignore') as url_inf:
+            for line in url_inf:
+                list_inf = line.strip('\n').split(':')
+                dict[list_inf[0]] = list_inf[1]
+
+    # если не существует, просим пользователя ввести токен и номер страны
+
+    else:
+        logger.info('inf.txt не существует, создаю файл в папке txtfiles')
+        with open('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'), 'w', encoding='utf-8-sig') as url_inf:
+            logger.info('Ниже введите токен вашего аккаунта на sms-activate')
+            token = input()
+            logger.info(
+                'Ниже введите название страны, номер телефона которой хотите арендовать. С большой буквы на русском языке:')
+            country_name = input()
+            url_inf.write(f'token:{token}\n'
+                          f'country_name:{country_name}\n'
+                          'Подсказка:если хотите пользоваться автоподбором страны с самой дешевой ценой номера, задайте country_name значение False')
+            url_inf.close()
+
+            with open('.' + os.path.join(os.sep, 'txtfiles', 'inf.txt'), 'r', encoding='utf-8-sig') as url_inf:
+                for line in url_inf:
+                    list_inf = line.strip().split(':')
+                    dict[list_inf[0]] = list_inf[1]
+    token = dict['token']
+    logger.debug(f'Распаковали inf.txt, взяли из него токен: {token}')
+    country_name_from_inf = dict.get('country_name')
+
+    # распаковываем коды стран
+
+    with open('.' + os.path.join(os.sep, 'txtfiles', 'countries_code.txt'), 'r', encoding='utf-8-sig',
+              errors='ignore') as countries_codes_file:
+        for line in countries_codes_file:
+            list_inf = line.strip().split(':')
+            countries_codes_dict[list_inf[1]] = list_inf[0]
+    logger.debug('Распаковали коды стран')
+    country_code_from_user = countries_codes_dict[country_name_from_inf]
+
+    # создаем списки имен и фамилий
+
+    name_list = []
+    surname_list = []
+
+    # импортируем имена и фамилии их txt-списков python списки и делаем их с большой буквы
+    with open('.' + os.path.join(os.sep, 'txtfiles', 'name_rus.txt'), 'r', encoding='utf-8-sig',
+              errors='ignore') as inf:
+        for eachLine in inf:
+            a = eachLine.capitalize().strip().split("\n")
+            name_list.append(a)
+
+    with open('.' + os.path.join(os.sep, 'txtfiles', 'surname.txt'), 'r', encoding='utf-8-sig', errors='ignore') as inf:
+        for eachLine in inf:
+            a = eachLine.capitalize().strip().split("\n")
+            surname_list.append(a)
+
+    logger.debug('Распаковали имена и фамилии')
+
+    # рандомно выбираем имя и фамилию и вставляем в инпуты
+
+    name = r.choice(name_list)
+    name = name[0]
+    surname = r.choice(surname_list)
+    surname = surname[0]
+    send_keys('//input[@id="ij_first_name"]', name)
+    send_keys('//input[@id="ij_last_name"]', surname)
+
+    # находим и кликаем по полю "день", из выпадающего списка рандомно выбираем день от 1 до 28. Кликаем
+
+    click("//div[@id='container1']")
+    day_random_count = r.randint(1, 28)
+    day_count = driver.find_element_by_xpath(
+        "//ul[@id='list_options_container_1']/li[text() = '%s']" % day_random_count)
+    day_count.click()
+
+    # находим и кликаем по полю "месяц", из выпадающего списка рандомно выбираем месяц. Кликаем
+
+    click("//div[@id='container2']")
+    months_list = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 'Июля', 'Августа', 'Сентября', 'Октября',
+                   'Ноября', 'Декабря']
+    month = r.choice(months_list)
+    month_li = driver.find_element_by_xpath("//ul[@id='list_options_container_2']/li[text() = '%s']" % month)
+    month_li.click()
+
+    # находим и кликаем по полю "год", из выпадающего списка рандомно выбираем год от 1980 до 2001. Кликаем
+
+    click("//div[@id='container3']")
+    year_random_count = r.randint(1980, 2001)
+    year_li = driver.find_element_by_xpath("//ul[@id='list_options_container_3']/li[text() = '%s']" % year_random_count)
+    year_li.click()
+
+    logger.debug('Заполнили поля имени, фамилии, дня, месяца, года')
+
+    # клик на кнопку "зарегистрироваться"
+
+    click("//button[@id='ij_submit']")
+    time.sleep(1)
+    logger.debug('Нажали "зарегистрироваться"')
+
+    # проверка, открылась ли следующая страница
+
+    reg_url = driver.current_url
+    if reg_url == "https://vk.com/":
+        tab_index = r.randint(-1, 0)
+        sex_div = driver.find_element_by_xpath("//div[@id='ij_sex_row']/div[@tabindex='%s']" % tab_index)
+        sex_div.click()
+        click("//button[@id='ij_submit']")
+
+    # проверяем, хочет ли человек автоподбор самой дешевой страны
+
+    if country_name_from_inf != 'False':  # проверяем, есть ли в файлике inf.txt заданная страна
+        logger.debug('Автоподбор страны с самым дешевым номером отключен')
+        pass
+
+    else:
+
+        # находим самый дешевый номер
+        # отправляем запрос на получение инфы о номерах
+
+        payload = {'api_key': f'{token}', 'action': 'getPrices', 'service': 'vk', 'operator': 'any'}
+        g = requests.get('https://sms-activate.ru/stubs/handler_api.php', params=payload)
+        response_dic = json.loads(g.text.replace("'", '"'))  # переводим строку в json, чтоб сделать словарем
+
+        # создаем и заполняем словарик: {номер страны: цена телефона этой страны}
+
+        number_cost_dic = {}
+        for elem in response_dic:
+            if response_dic[elem] == {}:  # проверка, не пустая ли эта часть словаря
+                continue
+            else:
+                if response_dic[elem]['vk']['count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
+                    continue
+                else:
+                    number_cost_dic[elem] = response_dic[elem]['vk'][
+                        'cost']  # добавляем в словарь значения
+
+        # сортируем словарик по возрастанию цены стран
+
+        ordered_number_cost_dic = OrderedDict(
+            sorted(number_cost_dic.items(), key=lambda t: t[1]))
+
+        # создаем список с номерами стран в порядке возрастания цены
+
+        for number_of_country in ordered_number_cost_dic:
+            numbers_of_countries_list.append(number_of_country)
+
+        logger.debug(f'создали список стран в порядке возрастания цены: {numbers_of_countries_list}')
+
+        number_of_the_cheapest_country = numbers_of_countries_list[0]  # берем первую страну из словарика
+        numbers_of_countries_list.remove(number_of_the_cheapest_country)  # удаляем первую страну из словарика
+        logger.debug(number_of_the_cheapest_country)
+
+    # вызываем функцию, которая определяет страну
+
+    ID, phone_numbers = country_get()
+
+    # ждем, пока не придет код
+
+    try:
+        WebDriverWait(driver, 300, 30).until(response_next, "смска пришла???")
+    except TimeoutException:
+        click('//a[@id="join_other_phone"]')
+        logger.info('Нажал на "Изменить номер"')
+
+        payload_number_is_ready_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{ID}'}
+        number_is_ready_request = requests.post('https://sms-activate.ru/stubs/handler_api.php',
+                                                params=payload_number_is_ready_request)
+        logger.debug(f'отправили запрос на отмену активации: {number_is_ready_request.text}')
+
+        logger.debug('Беру другую страну, ибо время вышло')
+        ID, phone_numbers = country_get()
+
+    # присваиваем sms_code значение пришедшего кода
+
+    sms_code = response_next(driver)
+
+    # вводим код в input "Введите код"
+
+    send_keys('//input[@id="join_code"]', sms_code)
+
+    time.sleep(1)
+
+    # клик по кнопке "Отправить код"
+
+    click('//button[@id="join_send_code"]')
+
+    time.sleep(1)
+
+    phone_numbers_str = str(phone_numbers)
+
+    # вводим пароль
+
+    password = ''.join(
+        [r.choice(list('123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM')) for x in range(12)])
+    send_keys('//input[@id="join_pass"]', password)
+
+    # клик "Войти на сайт"
+
+    click("//button[@id='join_send_pass']")
+
+    # записываем в файлик логин и пароль
+
+    login_pass = name + '&' + surname + '#' + phone_numbers_str + ':' + password
+    with open('.' + os.path.join(os.sep, 'txtfiles', 'login, pass.txt'), 'a') as passLoginFile:
+        passLoginFile.writelines('\n' + login_pass)
+    logger.debug(f'Информация о созданном аккаунте находится в директории autoreg/txtfiles/login, pass.txt')
+    logger.debug(f'Аккаунт: {login_pass}')
+
+    # Нажимаем "Пропустить"
+
+    time.sleep(2)
+    click('//a[@class="join_skip_link"]')
 
 
-    WebDriverWait(driver, 300, 30).until(responceNext, "смска пришла???")
-
-    # if responceAnalise(responce) == False or responceAnalise(responce) == None:
-    #     click('//a[@id="join_other_phone"]')
-    #
-    #     payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{ID}'}
-    #     numberIsReadyRequest = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-    #                                          params=payloadNumberReadyRequest)
-    #     print('отправили запрос на отмену активации: ', numberIsReadyRequest.text)
-    #
-    #
-    #     print('Беру другую страну, ибо sim-activate ошибку написал')
-    #     countryGet()
-
-    print('смска пришла: ', smsCode)
-except TimeoutException:
-    click('//a[@id="join_other_phone"]')
-    print('Нажал на "Изменить номер"')
-
-    payloadNumberReadyRequest = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{ID}'}
-    numberIsReadyRequest = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-                                         params=payloadNumberReadyRequest)
-    print('отправили запрос на отмену активации: ', numberIsReadyRequest.text)
-
-    print('Беру другую страну, ибо время вышло')
-    countryGet()
-
-# вводим код в input "Введите код"
-
-sendKeys('//input[@id="join_code"]', smsCode)
-
-time.sleep(1)
-
-# клик по кнопке "Отправить код"
-
-click('//button[@id="join_send_code"]')
-
-time.sleep(1)
-
-phoneNumbersStr = str(phoneNumbers)
-
-# вводим пароль
-
-password = ''.join(
-    [r.choice(list('123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM')) for x in range(12)])
-sendKeys('//input[@id="join_pass"]', password)
-
-# клик "Войти на сайт"
-
-click("//button[@id='join_send_pass']")
-
-# записываем в файлик логин и пароль
-print(type(name), name)
-print(type(surname), surname)
-print(type(phoneNumbersStr), phoneNumbersStr)
-
-print(type(password), password)
-loginPass = name + '&' + surname + '#' + phoneNumbersStr + ':' + password
-print(loginPass)
-with open('.' + os.path.join(os.sep, 'names', 'login, pass.txt'), 'a') as passLoginFile:
-    passLoginFile.writelines('\n' + loginPass)
-print('В файлик логин и пароль записал. Все готово')
-
-# Нажимаем "Пропустить"
-
-time.sleep(2)
-click('//a[@class="join_skip_link"]')
+main_func()

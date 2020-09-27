@@ -25,3 +25,22 @@
 [0821/151035.238:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir16744_341753362\Crashpad\reports\f4207306-5086-4230-9f76-cc7a97938c12.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
 [0823/234429.658:ERROR:file_io_win.cc(170)] CreateFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir43448_2097039667\Crashpad\reports\a5c9c588-249c-4517-a085-4b845dc4914d.dmp: Системе не удается найти указанный путь. (0x3)
 [0823/234429.659:ERROR:crash_report_exception_handler.cc(97)] PrepareNewCrashReport failed
+[0922/041550.601:ERROR:process_reader_win.cc(123)] NtOpenThread: {Отказано в доступе} Процесс запросил доступ к объекту, но права на доступ не предоставлены. (0xc0000022)
+[0922/041550.606:ERROR:exception_snapshot_win.cc(99)] thread ID 20076 not found in process
+[0926/215134.631:ERROR:file_io.cc(135)] WriteFile: Недостаточно места на диске. (0x70)
+[0926/215134.632:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0926/215134.633:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir7752_1415879677\Crashpad\reports\808c58fe-a864-43c1-af03-67cdea1ac37f.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0927/003417.927:ERROR:file_io.cc(135)] WriteFile: Недостаточно места на диске. (0x70)
+[0927/003417.927:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0927/003417.928:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir11960_1691714837\Crashpad\reports\f3c6509f-e22a-4dae-8eb8-339d93892e9e.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0927/003433.355:ERROR:file_io.cc(135)] WriteFile: Недостаточно места на диске. (0x70)
+[0927/003433.356:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0927/003433.356:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir6488_1991169181\Crashpad\reports\2451db76-9f89-435c-97e6-6efcb85cae0f.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0927/003505.999:ERROR:file_io.cc(135)] WriteFile: Недостаточно места на диске. (0x70)
+[0927/003506.000:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0927/003506.000:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir28688_36150181\Crashpad\reports\26a264c4-a59c-4e32-8828-3b50420af846.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0927/003828.272:ERROR:file_io.cc(135)] WriteFile: Недостаточно места на диске. (0x70)
+[0927/003828.273:ERROR:crash_report_exception_handler.cc(111)] WriteEverything failed
+[0927/003828.273:ERROR:filesystem_win.cc(148)] DeleteFile C:\Users\40E4~1\AppData\Local\Temp\scoped_dir18400_369355767\Crashpad\reports\9dfb4b41-e015-427a-ad2b-1e2ff6831d30.dmp: Процесс не может получить доступ к файлу, так как этот файл занят другим процессом. (0x20)
+[0927/010821.280:ERROR:process_reader_win.cc(123)] NtOpenThread: {Отказано в доступе} Процесс запросил доступ к объекту, но права на доступ не предоставлены. (0xc0000022)
+[0927/010821.283:ERROR:exception_snapshot_win.cc(99)] thread ID 21620 not found in process

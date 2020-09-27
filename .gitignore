@@ -1,7 +1,12 @@
 inf.txt 
+login, pass.txt
+proxies.txt
+debug.log
+myfile.txt
 # Editors
 .vscode*
 .idea*
 venv*
+test.py
 .111*
 chromedriver
