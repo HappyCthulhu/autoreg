@@ -1,6 +1,7 @@
 inf.txt 
 login, pass.txt
 proxies.txt
+myfile.log
 /debug.log
 /chromedriver.exe
 myfile.txt

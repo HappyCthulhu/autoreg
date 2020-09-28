@@ -42,8 +42,6 @@ def main_func():
     countries_codes_dict, dict, proxies_dict, numbers_of_countries_list = {}, {}, {}, []
     ID, phone_numbers, sms_code = None, None, None
 
-    # Проверяем, пустой ли файл. Если да - пропускаем установку прокси, если нет - подключаемся к ней
-
     def type_proxy():
         with open('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt'), 'r', encoding='utf-8-sig',
                   errors='ignore') as proxies_file:
@@ -57,6 +55,9 @@ def main_func():
                     logger.critical('Тип прокси не определен')
 
     def proxy_get():
+
+        # Проверяем, пустой ли файл. Если да - пропускаем установку прокси, если нет - подключаемся к ней
+
         if os.path.getsize('.' + os.path.join(os.sep, 'yourfiles', 'proxies.txt')) > 0:
             if type_proxy() == 'private proxy':
                 logger.debug('Тип вашего прокси - приватный')
@@ -99,7 +100,7 @@ def main_func():
 
         else:
             logger.debug('Вы не задали никакого прокси')
-            return webdriver.Chrome
+            return webdriver.Chrome()
 
     # проверяем, существует ли proxies.txt
 
