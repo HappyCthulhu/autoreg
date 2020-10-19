@@ -1,0 +1,12 @@
+your_files
+chromedriver.exe
+old_main.py
+__pycache__
+*.log
+# Editors
+.vscode*
+.idea*
+venv*
+test.py
+.111*
+chromedriver
