@@ -20,7 +20,8 @@ def set_logger():
     logger_format_info = "<green>{time:DD-MM-YY HH:mm:ss}</> | <bold><fg 255,255,255>{level}</></> | " \
                          "<cyan>{file}:{function}:{line}</> | <fg 255,255,255>{message}</> | <fg 255,255,255>✔</>"
     logger_format_critical = "<green>{time:DD-MM-YY HH:mm:ss}</> | <RED><fg 255,255,255>{level}</></> | " \
-                             "<cyan>{file}:{function}:{line}</> | <fg 255,255,255><RED>{message}</></> | <RED><fg 255,255,255>❌</></>"
+                             "<cyan>{file}:{function}:{line}</> | <fg 255,255,255><RED>{message}</></> | " \
+                             "<RED><fg 255,255,255>❌</></>"
 
     logger.add(sys.stderr, format=logger_format_debug, level='DEBUG', filter=debug_only)
     logger.add(sys.stderr, format=logger_format_info, level='INFO', filter=info_only)

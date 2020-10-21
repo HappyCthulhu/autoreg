@@ -1,13 +1,15 @@
 from datetime import datetime
 import os
-import re
 import sys
 import time
 import json
+
+import phonenumbers
 import requests
 import random as r
 import yaml
 
+from pathlib import Path
 from loguru import logger
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
@@ -20,14 +22,12 @@ from py_files.add_proxy import driver_settings
 from py_files.some_functions import set_logger
 
 # Присваиваем значение переменных
-ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES = []
-countries_codes_dict, dict, proxies_dict = {}, {}, {}
-INF_FILE_PATH = os.path.join('your_files', 'inf.yml')
-COUNTRY_CODES_FILE_PATH = os.path.join('text_files', 'countries_codes.yml')
+enumerate_list_of_countries_numbers_prices = []
+INF_FILE_PATH = Path('your_files', 'inf.yml')
+COUNTRY_CODES_FILE_PATH = Path('text_files', 'countries_codes.yml')
 
 
-def exit_code(status):
-    logger.debug('Останавливаю работу скрипта')
+def exit_code(status='Останавливаю работу скрипта'):
     logger.critical(f'Причина: {status}')
     driver.quit()
     sys.exit()
@@ -52,6 +52,7 @@ def inf_file_unpack(path_to_file):
         token = inf_file_dic['token']
         logger.debug(f'Ваш токен: {token}')
         country_name = inf_file_dic['country_name']
+        country_auto_select = inf_file_dic['country_auto_select']
         logger.debug(f'Выбранная страна: {country_name}')
         sex = inf_file_dic['sex']
         logger.debug(f'Выбранный пол: {sex}')
@@ -63,7 +64,7 @@ def inf_file_unpack(path_to_file):
             name = person.name(gender=Gender.MALE)
             surname = person.surname(gender=Gender.MALE)
 
-        return token, country_name, name, surname
+        return token, country_name, name, surname, country_auto_select
 
 
 def auto_selection_country():
@@ -75,7 +76,7 @@ def auto_selection_country():
         response_get_prices_json.text.replace("'", '"'))  # переводим строку в json, чтоб сделать словарем
 
     # распаковываем файлик, чтоб считывать из него название стран
-    with open(os.path.join('text_files', 'countries_codes_reverse.yml'), 'r', encoding='UTF-8') as countries_codes_file:
+    with open(Path('text_files', 'countries_codes_reverse.yml'), 'r', encoding='UTF-8') as countries_codes_file:
         countries_codes_reverse_dict = yaml.load(countries_codes_file, Loader=yaml.FullLoader)
         logger.debug(f'Распаковали "countries_codes_reverse.yml"')
 
@@ -84,38 +85,46 @@ def auto_selection_country():
         if response_dic[country_number] == {}:  # проверка, не пустая ли эта часть словаря
             continue
         else:
-            if response_dic[country_number]['vk']['count'] < 10:  # проверка, есть ли инфа и 10 доступных номеров
+            if response_dic[country_number]['vk']['count'] < 50:  # проверка, есть ли инфа и 10 доступных номеров
                 continue
             else:
-                country_name = countries_codes_reverse_dict[int(country_number)]
-                ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES.append(
-                    [country_name, [int(country_number), response_dic[country_number]['vk']['cost']]])
+                try:
+                    country_name = countries_codes_reverse_dict[int(country_number)]
+                    cost = response_dic[country_number]['vk']['cost']
+                    count_of_numbers = response_dic[country_number]['vk']['count']
+                    enumerate_list_of_countries_numbers_prices.append(
+                        [{'country name': country_name},
+                         {'country number': int(country_number), 'cost': cost, 'count of numbers': count_of_numbers}])
+                except KeyError:
+                    pass
 
     # создаем список с номерами стран в порядке возрастания цены
     def sort_list(i):
-        return i[1][1]
+        return i[1]['cost']
 
-    ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES.sort(key=sort_list)
+    enumerate_list_of_countries_numbers_prices.sort(key=sort_list)
 
     # записываем список цен в файл
-    with open(os.path.join('your_files', 'sorted_prices.yml'), 'w', encoding='utf-8') as sorted_prices_file:
+    with open(Path('your_files', 'sorted_prices.yml'), 'w', encoding='utf-8') as sorted_prices_file:
         sorted_prices_file.write('#' + str(datetime.today()) + '\n' + '\n')
-        yaml.dump(ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES, sorted_prices_file, allow_unicode=True)
+        yaml.dump(enumerate_list_of_countries_numbers_prices, sorted_prices_file, allow_unicode=True)
     logger.debug(
         'Создали список стран по порядку увеличения цены аренды номера. Результаты в your_files/sorted_prices.yml')
 
-    return ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES
+    return enumerate_list_of_countries_numbers_prices
 
 
 # удаляем из списка первую страну и кладем ее номер в переменную
 def cheapest_country_select(enumerate_countries_list):
     cheapest_country_list = enumerate_countries_list[0]
-    number_of_the_cheapest_country = cheapest_country_list[1][0]  # берем первую страну из списка
+    number_of_the_cheapest_country = cheapest_country_list[1]['country number']  # берем первую страну из списка
+    country_name = cheapest_country_list[0]['country name']  # берем первую страну из списка
+    cost = cheapest_country_list[1]['cost']
     enumerate_countries_list.remove(
         enumerate_countries_list[0])  # удаляем первую страну из списка
     logger.debug(
-        f'Взяли страну: "{cheapest_country_list[0]}", с номером: {number_of_the_cheapest_country}, по цене: {cheapest_country_list[1][1]}₽')
-    return enumerate_countries_list, number_of_the_cheapest_country
+        f'Взяли страну: "{country_name}", с номером: {number_of_the_cheapest_country}, по цене: {cost}₽')
+    return enumerate_countries_list, number_of_the_cheapest_country, country_name
 
 
 # распаковываем коды стран
@@ -123,22 +132,18 @@ def countries_codes_file_unpack(path_to_file, country_name):
     with open(path_to_file, 'r', encoding='UTF-8') as countries_codes_file:
         countries_codes_dict = yaml.load(countries_codes_file, Loader=yaml.FullLoader)
         # проверяем, хочет ли человек автоподбор самой дешевой страны
-        if country_name != False:
-            country_number = countries_codes_dict[country_name]
-            logger.debug(f'Распаковали "countries_codes.txt"')
-            logger.debug(f'Номер страны "{country_name}": {country_number}')
-            return country_number
-        else:
-            return None
+        country_number = countries_codes_dict[country_name]
+        logger.debug(f'Распаковали "countries_codes.inf"')
+        logger.debug(f'Номер страны "{country_name}": {country_number}')
+        return country_number
 
 
 # проверяем IP, с которого подключаемся
-def ip_check():
+def print_ip():
     try:
         driver.get('https://2ip.ru/')
         ip = driver.find_element_by_xpath('//div[@class="ip"]/span').text
         logger.debug(f'Ваш прокси: {ip}')
-        return ip
     except NoSuchElementException:
         logger.critical('2ip не прогрузился')
         return '2ip не прогрузился'
@@ -158,24 +163,37 @@ def get_number_response_analyze(response_get_number):
         return True
     elif response_get_number.text == 'NO_BALANCE':
         logger.critical('Денег нет')
+        exit_code()
     elif response_get_number.text == 'NO_NUMBERS':
         logger.debug('Нет номеров')
     elif response_get_number.text == 'BAD_KEY':
-        logger.critical('Токен из файла inf.txt не работает')
+        logger.critical('Токен из файла inf.yml не работает')
+        exit_code()
     elif 'BAD_STATUS' in response_get_number.text:
         logger.critical('Что-то не так с ID операции')
+        exit_code()
     else:
         logger.critical(f'Что-то пошло не так. Ответ sms-activate: {response_get_number.text}')
+        exit_code()
     return False
 
 
 # вытаскиваем id и номер телефона из запроса
 def get_id_and_phone_number(response_get_number):
-    split_response = re.split(r':', response_get_number.text)
-    id = split_response[1]
-    phone_numbers = re.findall(r'\d{10}$', split_response[2])[0]
+    split_response = response_get_number.text.split(':')
+    id, phone_numbers_with_country_code = split_response[1], split_response[2]
+    phone_numbers_parse = phonenumbers.parse('+{}'.format(phone_numbers_with_country_code))
+    phone_numbers = phone_numbers_parse.national_number
     logger.debug(f'Получили номер: {phone_numbers} и ID операции: {id}')
     return id, phone_numbers
+
+
+def send_request_set_status_canceling_activation(token, id):
+    payload_number_is_cancel_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{id}'}
+    number_is_cancel_response = requests.post('https://sms-activate.ru/stubs/handler_api.php',
+                                              params=payload_number_is_cancel_request)
+    logger.debug(f'отправили запрос на отмену активации: {number_is_cancel_response.text}')
+    return number_is_cancel_response
 
 
 # меняем статус номера (номер готов к принятию смс)
@@ -219,8 +237,8 @@ def get_sms_code_analysis(id, token):
 # проверка, заблокировал ли вк номер или сказал, что формат номера неверный
 def is_number_blocked_or_wrong_format():
     try:
+        time.sleep(1)
         driver.find_element_by_xpath("//div[@class='msg_text']")
-        exit_code('Вк заблокировал номер')
         return False
     except NoSuchElementException:
         logger.debug('Вк не заблокировал номер')
@@ -229,8 +247,8 @@ def is_number_blocked_or_wrong_format():
     # проверяем наличия div "Неверный номер телефона. Введите в международном формате"
 
     try:
+        time.sleep(1)
         driver.find_element_by_xpath("//div[@class='msg error']")
-        exit_code('Неверный номер телефона. Введите в международном формате')
         return False
     except NoSuchElementException:
         logger.debug('Международный формат - ок')
@@ -244,39 +262,54 @@ def take_another_number(country_number, token):
     while attempt_count < 10:
         attempt_count += 1
         response_get_number = get_number_request(country_number, token)
-        if get_number_response_analyze(response_get_number) == False:
+        if not get_number_response_analyze(response_get_number):
+            take_another_country(enumerate_list_of_countries_numbers_prices)
             driver.quit()
-            exit_code('')
+            exit_code()
 
         id, phone_numbers = get_id_and_phone_number(response_get_number)
         clear('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
+        clear('//div[@class="prefix_input_field"]/input[@id="join_phone"]')
         send_keys('//div[@class="prefix_input_field"]/input[@id="join_phone"]', phone_numbers)
-        if is_number_blocked_or_wrong_format:
+        click('//button[@id="join_send_phone"]')
+        if is_number_blocked_or_wrong_format():
             return id
-    exit_code('Было сделано 10 неудачных попыток получения номера')
+        send_request_set_status_canceling_activation(token, id)
+    return False
 
 
 # берем другую страну. Эта часть кода находится в разработке))))
-# def take_another_country():
-#     ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES, country_number = cheapest_country_select(
-#         ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES)
-#     return country_number
+def take_another_country(enumerate_list_of_countries_numbers_prices):
+    enumerate_list_of_countries_numbers_prices, country_number, country_name = cheapest_country_select(
+        enumerate_list_of_countries_numbers_prices)
+    # countries_not_allowed = ['Камбоджа', 'США', 'Индонезия', 'Сьерра-Леоне', 'Англия', 'Венесуэла']
+    # for i in countries_not_allowed:
+    #     while i == country_name:
+    #         enumerate_list_of_countries_numbers_prices, country_number, country_name = cheapest_country_select(
+    #             enumerate_list_of_countries_numbers_prices)
+
+    clear('//input[@class="selector_input selected"]')
+    send_keys('//input[@class="selector_input selected"]', country_name)
+    send_keys('//td[@class="selector"]/input[@type="text"]', u'\ue007')
+    take_another_number(country_number, token)
+    return enumerate_list_of_countries_numbers_prices, country_number, country_name
 
 
 set_logger()
 
-token, country_name, name, surname = inf_file_unpack(INF_FILE_PATH)
+token, country_name, name, surname, country_auto_select = inf_file_unpack(INF_FILE_PATH)
 country_number = countries_codes_file_unpack(COUNTRY_CODES_FILE_PATH, country_name)
-if country_number == None:
+if country_auto_select:
     logger.debug('Включен автоподбор страны с самым дешевым номером')
-    ENUMERATE_LIST_OF_COUNTRIES_NUMBERS_PRICES, country_number = cheapest_country_select(auto_selection_country())
+    enumerate_list_of_countries_numbers_prices, country_number, country_name = cheapest_country_select(
+        auto_selection_country())
 
 # Назначаем драйвер
-driver = driver_settings(os.path.join('your_files', 'proxies.yml'))
+driver = driver_settings(Path('your_files', 'proxies.yml'))
 
 # удаляем куки и переходим на страницу
 driver.delete_all_cookies()
-ip_check()
+print_ip()
 driver.get('https://vk.com/')
 
 # вставляем имя и фамилию
@@ -291,9 +324,7 @@ driver.find_element_by_xpath(
 
 # находим и кликаем по полю "месяц", из выпадающего списка рандомно выбираем месяц. Кликаем
 click("//div[@id='container2']")
-months_list = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 'Июля', 'Августа', 'Сентября', 'Октября',
-               'Ноября', 'Декабря']
-driver.find_element_by_xpath(f"//ul[@id='list_options_container_2']/li[text() = '{r.choice(months_list)}']").click()
+driver.find_element_by_css_selector(f"#list_options_container_2 :nth-child({r.randint(2, 13)})").click()
 
 # находим и кликаем по полю "год", из выпадающего списка рандомно выбираем год от 1980 до 2001. Кликаем
 click("//div[@id='container3']")
@@ -307,21 +338,24 @@ logger.debug('Нажали "зарегистрироваться"')
 # проверка, открылась ли следующая страница. Если появилось поле ввода пола - заполняем
 try:
     WebDriverWait(driver, 2).until(
-        EC.presence_of_element_located((By.XPATH, "//div[@id='ij_sex_row']/div[@tabindex='{r.randint(-1, 0)}']")))
+        EC.element_to_be_clickable((By.XPATH, f"//div[@id='ij_sex_row']/div[@tabindex='{r.randint(-1, 0)}']")))
     logger.debug('Вылезло поле определения пола')
     driver.find_element_by_xpath(f"//div[@id='ij_sex_row']/div[@tabindex='{r.randint(-1, 0)}']").click()
     click("//button[@id='ij_submit']")
-except:
+except BaseException:
     logger.debug('Поле определения пола скрыто')
 
 # отправляем запрос на получение номера телефона
 response_get_number = get_number_request(country_number, token)
-if get_number_response_analyze(response_get_number) == False:
+if not get_number_response_analyze(response_get_number):
     exit_code('Что-то с запросом на выдачу номера')
 
 # выдергиваем id и номер телефона из ответа
 id, phone_numbers = get_id_and_phone_number(response_get_number)
 response_get_status = send_get_status_request(token, id)
+
+WebDriverWait(driver, 5).until(
+    EC.element_to_be_clickable((By.CSS_SELECTOR, '.selector_input')))
 
 # Находим и вводим страну
 clear('//input[@class="selector_input selected"]')
@@ -337,12 +371,14 @@ click('//button[@id="join_send_phone"]')
 time.sleep(1)
 
 # проверка, пропускает ли вк номер
-if is_number_blocked_or_wrong_format() == False:
+if not is_number_blocked_or_wrong_format():
     id = take_another_number(country_number, token)
-
+    while id is False:
+        enumerate_list_of_countries_numbers_prices, country_number, country_name = take_another_country(
+            enumerate_list_of_countries_numbers_prices)
 # проверка готовности кнопки "Отправить код с помощью смс"
 send_code_button = driver.find_element_by_xpath("//div[@id='join_code_row']")
-if send_code_button.is_displayed() == True:
+if send_code_button.is_displayed():
     logger.debug('Div, содержащий "Введите код" доступен')
 else:
     # ожидание готовности кнопки "Отправить код с помощью смс"
@@ -359,11 +395,11 @@ try:
     WebDriverWait(driver, 300, 5).until(send_get_status_request_and_analyze_response, "Смска не пришла")
 except TimeoutException:
 
-    payload_number_is_ready_request = {'api_key': f'{token}', 'action': 'setStatus', 'status': '8', 'id': f'{id}'}
-    number_is_ready_request = requests.post('https://sms-activate.ru/stubs/handler_api.php',
-                                            params=payload_number_is_ready_request)
-    logger.debug(f'отправили запрос на отмену активации: {number_is_ready_request.text}')
+    send_request_set_status_canceling_activation(token, id)
     id = take_another_number(country_number, token)
+    if not id:
+        enumerate_list_of_countries_numbers_prices, country_number, country_name = take_another_country(
+            enumerate_list_of_countries_numbers_prices)
 
 sms_code = get_sms_code_analysis(id, token)
 
@@ -374,7 +410,6 @@ time.sleep(1)
 
 # клик по кнопке "Отправить код"
 click('//button[@id="join_send_code"]')
-time.sleep(1)
 phone_numbers_str = str(phone_numbers)
 
 # вводим пароль
@@ -382,11 +417,16 @@ password = Person('en').password(length=12)
 send_keys('//input[@id="join_pass"]', password)
 
 # клик "Войти на сайт"
+try:
+    WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, '#join_send_pass')))
+except BaseException:
+    logger.info('Кнопки "Войти на сайт не дождались"')
 click("//button[@id='join_send_pass']")
 
 # записываем в файлик логин и пароль
 login_pass = name + '&' + surname + '#' + phone_numbers_str + ':' + password
-with open('.' + os.path.join(os.sep, 'your_files', 'login, pass.txt'), 'a', encoding='UTF-8') as passLoginFile:
+with open(Path('your_files', 'login, pass.txt'), 'a', encoding='UTF-8') as passLoginFile:
     passLoginFile.write(login_pass + '\n')
 logger.debug(f'Аккаунт: {login_pass}')
 logger.debug(f'Информация о созданном аккаунте находится в директории autoreg/your_files/login, pass.txt')

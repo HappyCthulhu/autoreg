@@ -1,12 +1,14 @@
 import os
-from loguru import logger
-from py_files.some_functions import set_logger
 
-PROXY_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'your_files', 'proxies.yml')
-LOGIN_PASS_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'your_files', 'login, pass.txt')
-INF_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'your_files', 'inf.yml')
-YOUR_FILES_FOLDER_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'your_files')
-SORTED_PRICES_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'your_files', 'sorted_prices.yml')
+from pathlib import Path
+from loguru import logger
+from some_functions import set_logger
+
+PROXY_FILE_PATH = Path('..', 'your_files', 'proxies.yml')
+LOGIN_PASS_FILE_PATH = Path('..', 'your_files', 'login, pass.txt')
+INF_FILE_PATH = Path('..', 'your_files', 'inf.yml')
+YOUR_FILES_FOLDER_PATH = Path('..', 'your_files')
+SORTED_PRICES_FILE_PATH = Path('..', 'your_files', 'sorted_prices.yml')
 
 
 def check_exist_path(path_file):
